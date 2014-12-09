@@ -1,0 +1,65 @@
+
+Custom Modules for Viva!
+
+----------------------------------------------------------------------------------------------------
+
+- Viva! Shipping (viva_shipping)
+
+  This module creates a Viva shipping method and two shipping services - standard and express.
+
+  The standard shipping cost is calculated by examining the line items for each order and adding
+  up the order value for 'standard' (ie not free shipping or bottled) items. This value is then
+  compared to a (hard coded) matrix which determines the cost.
+
+  The shipping type for each product is determined by the field_delivery_charge value which is a
+  term id within the 'Shipping Category' taxonomy vocabulary (note that the machine name is 
+  shipping_category for this vocabulary).
+
+  If there are any drinks on the order then the cost for this is calculated based on the total
+  cases contained in the order. Again this is hard coded.
+
+  The express service uses the same logic as the standard service but just adds a premium.
+
+  Non-UK addresses have the EU rates applied.
+
+  Note that if field_delivery_charge tid is not set for a product then the module will assume
+  that standard shipping applies.
+
+  NOTES
+
+  - TODO: Admin option - would be useful for turning on debug
+  - TODO: Case/drinks pricing still not clarified. Currently counts quantities based on taxonomy (bottle/case) but
+    we need to clear up definitions
+  - Can we use one of the service callbacks to set the service description on the fly to show how shipping calculated
+  - TODO: Double check that we're picking up the line item cost correctly (in viva_shipping_get_order_data)
+    currently calculating as qty * unit but I *think* the line value has already been calculated
+    and we can access and use that - importantly it might have been adjusted for discounts etc
+  - Would be nice not to have the hard coded values. I believe there is an option to pass
+    back variables via the callbacks but I haven't looked into this.
+  - Optionally we could just present the express shipping option as a checkbox (via shipping service callback)
+  - Optionally we could create an EU shipping service and use rules to select it - might be more flexible but
+    implies that we'll need to negate the standard and free shipping - hmm - on balance might be easier to
+    leave this as it is.
+
+----------------------------------------------------------------------------------------------------
+
+- Viva! Case Sizes (viva_cases)
+
+  This module provides a mechanism to ensure that customers can only order bottled products in full
+  case quantites.
+
+  Products that have to be ordered in these case quantities are identified by having the field
+  field_delivery_charge (which is a term reference to the 'Shipping Category' taxonomy vocabulary)
+  set to 'Drinks (Bottle)'.
+
+  Cases size and the enforcement of this resitriction can be administered via the custom admin
+  form at admin/commerce/config/viva-cases.
+
+  NOTES
+
+  - Should Viva's requirements change it may be necessary at some stage to use a different mechanism
+    for identifying the products that we need to check. At the moment the logic aligns with the 
+    shipping.
+
+
+

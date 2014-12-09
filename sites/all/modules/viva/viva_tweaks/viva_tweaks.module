@@ -1,0 +1,21 @@
+<?php
+
+/*
+ * Code lifted from https://www.drupal.org/node/2184627
+ */
+
+function viva_tweaks_views_post_execute(&$view) {
+if ('collection_products' == $view->name) {
+$orders = array();
+
+foreach($view->result as $row) {
+$nid = $row->entity;
+$tid = $view->args[0];
+$weight = db_query("SELECT weight FROM {taxonomy_index} WHERE nid = :nid AND tid = :tid", array(':nid' => $nid, ':tid' => $tid))->fetchField();
+$orders[] = $weight;
+}
+
+array_multisort($orders, SORT_ASC, $view->result);
+}
+}
+

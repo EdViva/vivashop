@@ -1,0 +1,6 @@
+name = Viva Tweaks
+description = Various tweaks for the Viva ecom site
+package = Viva
+dependencies[] = views
+core = 7.x
+version = 7.x-1.0

@@ -1,0 +1,164 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function viva_cases_menu() {
+  $items = array();
+  $items['admin/commerce/config/viva-cases'] = array(
+    'title' => 'Viva Case Size',
+    'description' => 'Viva case size configuration.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('viva_cases_settings_form'),
+    'access arguments' => array('configure store'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Admin form
+ */
+function viva_cases_settings_form($form, &$form_state) {
+  $form = array();
+  $form['viva_cases_case_size'] = array(
+    '#type' => 'textfield',
+    '#size' => 5,
+    '#title' => t('Case Size'),
+    '#description' => t('The case size bottles must be ordered in a minimum of.'),
+    '#default_value' => viva_cases_get_case_size(),
+  );
+  $form['viva_cases_enforce_case_size'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enforce'),
+    '#description' => t('Force bottles to be ordered in case sizes.'),
+    '#default_value' => viva_cases_get_enforce_case_size(),
+  );
+  $form['viva_cases_debug'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Debug'),
+    '#description' => t('Turn on debug.'),
+    '#default_value' => viva_cases_get_debug(),
+  );
+  $form['#validate'] = array('viva_cases_settings_form_validate');
+  return system_settings_form($form);
+}
+
+/**
+ * Validate the settings form
+ */
+function viva_cases_settings_form_validate($form, &$form_state) {
+  $case_size_string = $form_state['values']['viva_cases_case_size'];
+  $enforce_case_size = $form_state['values']['viva_cases_enforce_case_size'];
+  if ( $enforce_case_size ) {
+       if ( !is_numeric($case_size_string) ) {
+            form_set_error('viva', t('Case size not numeric.'));
+          }
+       $case_size = (float) $form_state['values']['viva_cases_case_size'];
+     }
+}
+
+/**
+ * Return case size.
+ */
+function viva_cases_get_case_size() {
+  return variable_get('viva_cases_case_size', 12);
+}
+
+/**
+ * Return flag that determines if we're enforcing case sizes
+ */
+function viva_cases_get_enforce_case_size() {
+  return variable_get('viva_cases_enforce_case_size', 1);
+}
+
+/**
+ * Return flag that determines if we're showing debug info
+ */
+function viva_cases_get_debug() {
+  return variable_get('viva_cases_debug', 0);
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function viva_cases_form_alter(&$form, &$form_state, $form_id) {
+  if ( viva_cases_get_enforce_case_size() ) {
+       if ( $form_id == 'views_form_commerce_cart_form_default' ) {
+            $form['actions']['checkout']['#validate'][] = 'viva_cases_checkout_form_validate';
+          } elseif ( $form_id == 'commerce_checkout_form_checkout' ) {
+            $form['buttons']['continue']['#validate'][] = 'viva_cases_checkout_form_validate';
+          } elseif ( $form_id == 'commerce_checkout_form_review' ) {
+            $form['buttons']['continue']['#validate'][] = 'viva_cases_checkout_form_validate';
+          }
+     }
+}
+
+/**
+ * Validate checkout
+ */
+function viva_cases_checkout_form_validate($form, &$form_state) {
+  $order = commerce_order_load($form_state['order']->order_id);
+  $order_data = viva_cases_get_order_data($order);
+  $case_size = viva_cases_get_case_size();
+  $order_bottles = $order_data['bottles'];
+  $odd_bottles = $order_data['bottles'] % $case_size;
+  if ( viva_cases_get_debug() ) {
+       $debug_message  = "DEBUG: Found $order_bottles bottles in the order.";
+       $debug_message .= "<br>DEBUG: Case size is $case_size.";
+       $debug_message .= "<br>DEBUG: Therefore odd bottles = $odd_bottles";
+       drupal_set_message($debug_message);
+     }
+  if ( $odd_bottles != 0 ) {
+       if ( $order_data['bottles'] < $case_size ) {
+            $topup = $case_size - $order_data['bottles'];
+            form_set_error('order',
+                           t('Bottles must be ordered in multiples of %case_size.<br>You need to add %topup more bottles to make up a case.',
+                           array('%case_size' => $case_size, '%topup' => $topup)
+                                )
+                          );
+          } else {
+            $prev_case = floor($order_data['bottles'] / $case_size);
+            $next_case = ceil($order_data['bottles'] / $case_size);
+            $topup = ($case_size * $next_case) - $order_data['bottles'];
+            form_set_error('order',
+                           t('Bottles must be ordered in multiples of %case_size.<br>You need to add %topup more bottles to make up %cases cases (or remove %odds bottles).',
+                           array('%case_size' => $case_size, '%topup' => $topup, '%cases' => $next_case, '%odds' => $odd_bottles))
+                          );
+          }
+     }
+
+}
+
+/**
+ * Works through order totalling number of loose bottles
+ */
+function viva_cases_get_order_data($order) {
+  $order_data['bottles'] = 0;
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+    if ( in_array($line_item_wrapper->type->value(), commerce_product_line_item_types()) ) {
+         $line_item_qty = $line_item_wrapper->quantity->value();
+         $product_wrapper = entity_metadata_wrapper('commerce_product', $line_item_wrapper->commerce_product->value());
+         $line_item_product_title = $product_wrapper->title->value();
+         $shipping_category_bottle = 135;
+         // quick filth to switch between viva production instance and test environment
+         if ( !isset($_SERVER['LOCAL_ADDR']) ) {
+              $_SERVER['LOCAL_ADDR'] = $_SERVER['SERVER_ADDR'];
+            }
+         if ( $_SERVER['LOCAL_ADDR'] == '176.67.165.196' ) {
+              // test system
+              $shipping_category_bottle = 5;
+            }
+         if ( isset($product_wrapper->field_delivery_charge) && $product_wrapper->field_delivery_charge->value() != NULL ) {
+              $shipping_category_tid = $product_wrapper->field_delivery_charge->tid->value();
+              $shipping_category_name = $product_wrapper->field_delivery_charge->name->value();
+              if ( $shipping_category_tid == $shipping_category_bottle ) {
+                   $order_data['bottles'] += $line_item_qty;
+                 }
+            }
+    }
+  }
+  return $order_data;
+}
+

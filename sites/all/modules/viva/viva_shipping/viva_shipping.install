@@ -1,0 +1,8 @@
+<?php
+
+/**
+ * Implements hook_uninstall().
+ */
+function viva_shipping_uninstall() {
+  variable_del('viva_shipping_debug');
+}

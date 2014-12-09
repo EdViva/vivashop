@@ -1,0 +1,8 @@
+name = Viva Shipping 
+description = Custom shipping services for Viva
+package = Viva
+dependencies[] = commerce
+dependencies[] = commerce_shipping
+core = 7.x
+version = 7.x-1.0
+

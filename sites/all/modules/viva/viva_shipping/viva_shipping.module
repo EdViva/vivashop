@@ -1,0 +1,272 @@
+<?php
+
+/**
+ * @file
+ * Defines custom shipping method and services for Viva!
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function viva_shipping_menu() {
+  $items = array();
+  $items['admin/commerce/config/viva-shipping'] = array(
+    'title' => 'Viva Shipping',
+    'description' => 'Viva shipping configuration.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('viva_shipping_settings_form'),
+    'access arguments' => array('configure store'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Admin form
+ */
+function viva_shipping_settings_form($form, &$form_state) {
+  $form = array();
+  $form['viva_shipping_debug'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Debug'),
+    '#description' => t('Turn on debug.'),
+    '#default_value' => viva_shipping_get_debug(),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Return flag that determines if we're showing debug info
+ */
+function viva_shipping_get_debug() {
+  return variable_get('viva_shipping_debug', 0);
+}
+
+
+/**
+ * Implements hook_commerce_shipping_method_info().
+ */
+function viva_shipping_commerce_shipping_method_info() {
+  $shipping_methods = array();
+
+  $shipping_methods['viva_shipping_method'] = array(
+    'title' => t('Viva'),
+    'description' => t('Viva custom shipping method.'),
+  );
+
+  return $shipping_methods;
+}
+
+/**
+ * Implements hook_commerce_shipping_service_info().
+ */
+function viva_shipping_commerce_shipping_service_info() {
+  $shipping_services = array();
+
+  $shipping_services['viva_shipping_standard'] = array(
+    'title' => t('Standard'),
+    'description' => t('Royal Mail.'),
+    'display_title' => t('Standard'),
+    'shipping_method' => 'viva_shipping_method',
+    'price_component' => 'shipping',
+    'callbacks' => array(
+      'rate' => 'viva_shipping_standard_rate',
+    ),
+  );
+
+  $shipping_services['viva_shipping_express'] = array(
+    'title' => t('Express'),
+    'description' => t('Parcelforce.'),
+    'display_title' => t('Express'),
+    'shipping_method' => 'viva_shipping_method',
+    'price_component' => 'shipping',
+    'callbacks' => array(
+      'rate' => 'viva_shipping_express_rate',
+    ),
+  );
+
+  return $shipping_services;
+}
+
+/**
+ * Shipping service callback: returns a base price array for a shipping service
+ * calculated for the given order.
+ */
+function viva_shipping_standard_rate($shipping_service, $order) {
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $shipping_costs = viva_shipping_calculate_shipping_costs($order,TRUE);
+  return array(
+    'amount' => $shipping_costs['standard'] + $shipping_costs['drinks'],
+    'currency_code' => $order_wrapper->commerce_order_total->currency_code->value(),
+    'data' => array(),
+  );
+}
+
+
+/**
+ * Shipping service callback: returns a base price array for a shipping service
+ * calculated for the given order.
+ */
+function viva_shipping_express_rate($shipping_service, $order) {
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $shipping_costs = viva_shipping_calculate_shipping_costs($order);
+  return array(
+    'amount' => $shipping_costs['standard'] + $shipping_costs['drinks'] + 695,
+    'currency_code' => $order_wrapper->commerce_order_total->currency_code->value(),
+    'data' => array(),
+  );
+}
+
+
+/**
+ * Calculate the shipping to be charged based on the information we have extracted from the order.
+ */
+function viva_shipping_calculate_shipping_costs($order,$debug=FALSE) {
+
+  $shipping_data = viva_shipping_get_order_data($order,$debug);
+
+/*
+ *                      UK     EU
+ *      0 -  4.99  =  1.95   2.50
+ *   5.00 - 19.99  =  3.95   7.50
+ *  20.00 - 39.99  =  5.50  13.75
+ *  40.00 - 99.99  =  6.50  16.25
+ * 100.00 -        =  0.00  18.75
+ *
+ */
+
+  $shipping_costs['standard'] = 0;
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $country = $order_wrapper->commerce_customer_shipping->commerce_customer_address->country->value();
+
+  if ( $shipping_data['standard'] > 0 ) {
+       if ( $country == 'GB' ) {
+            $shipping_costs['standard'] = 195;
+            if ( $shipping_data['standard'] > 499   ) { $shipping_costs['standard'] = 395; }
+            if ( $shipping_data['standard'] > 1999  ) { $shipping_costs['standard'] = 550; }
+            if ( $shipping_data['standard'] > 3999  ) { $shipping_costs['standard'] = 650; }
+            if ( $shipping_data['standard'] > 10000 ) { $shipping_costs['standard'] = 0; }
+	  } else {
+            $shipping_costs['standard'] = 250;
+            if ( $shipping_data['standard'] > 499   ) { $shipping_costs['standard'] = 750; }
+            if ( $shipping_data['standard'] > 1999  ) { $shipping_costs['standard'] = 1375; }
+            if ( $shipping_data['standard'] > 3999  ) { $shipping_costs['standard'] = 1625; }
+            if ( $shipping_data['standard'] > 10000 ) { $shipping_costs['standard'] = 1875; }
+          } 
+  }
+
+/*
+ * Wine (UK)
+ * 1-4 cases £7.95 (in total)
+ * 5+ cases free
+ */
+
+  $shipping_costs['drinks'] = 0;
+  if ( $shipping_data['bottles'] > 0 ) {
+       $cases = $shipping_data['cases'] + ( $shipping_data['bottles'] / variable_get('viva_cases_case_size', 12));
+     } else {
+       $cases = $shipping_data['cases'];
+     } 
+  $shipping_data['calculated-cases'] = $cases;
+  if ( $cases > 0 && $cases < 5 ) {
+       $shipping_costs['drinks'] = 795;
+     }
+
+  if ( viva_shipping_get_debug() && $debug ) {
+       $shipping_data_free = $shipping_data['free'];
+       $shipping_data_standard = $shipping_data['standard'];
+       $shipping_data_bottles = $shipping_data['bottles'];
+       $shipping_data_cases = $shipping_data['cases'];
+       $shipping_data_calculated_cases = $shipping_data['calculated-cases'];
+       $shipping_costs_standard = $shipping_costs['standard'];
+       $shipping_costs_drinks = $shipping_costs['drinks'];
+       $debug_message = "DEBUG: Value of free shipping products: $shipping_data_free";
+       $debug_message .= "<br>DEBUG: Value of standard shipping products: $shipping_data_standard";
+       $debug_message .= "<br>DEBUG: Quantity of bottles ordered: $shipping_data_bottles";
+       $debug_message .= "<br>DEBUG: Quantity of cases ordered: $shipping_data_cases";
+       $debug_message .= "<br>DEBUG: Calculated cases to ship: $shipping_data_calculated_cases";
+       $debug_message .= "<br>DEBUG: Calculated standard shipping cost: $shipping_costs_standard";
+       $debug_message .= "<br>DEBUG: Calculated drinks shipping cost: $shipping_costs_drinks";
+       drupal_set_message($debug_message);
+     }
+
+  return $shipping_costs;
+
+}
+
+
+
+/**
+ * Works through order extracting information we need to calculate the shipping for this order.
+ */
+function viva_shipping_get_order_data($order,$debug=FALSE) {
+
+  $shipping_data['free'] = 0;
+  $shipping_data['standard'] = 0;
+  $shipping_data['bottles'] = 0;
+  $shipping_data['cases'] = 0;
+
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+  foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+
+    if ( in_array($line_item_wrapper->type->value(), commerce_product_line_item_types()) ) {
+
+         $line_item_qty = $line_item_wrapper->quantity->value();
+         $line_item_unit_price = $line_item_wrapper->commerce_unit_price->amount->value();
+         $line_item_value = $line_item_qty * $line_item_unit_price;
+
+         $product_wrapper = entity_metadata_wrapper('commerce_product', $line_item_wrapper->commerce_product->value());
+         $line_item_product_title = $product_wrapper->title->value();
+
+         $shipping_category_standard = 104;
+         $shipping_category_free = 103;
+         $shipping_category_bottle = 135;
+         $shipping_category_case = 136;
+
+         // quick filth to switch between viva production instance and test environment
+         if ( !isset($_SERVER['LOCAL_ADDR']) ) {
+              $_SERVER['LOCAL_ADDR'] = $_SERVER['SERVER_ADDR'];
+            }
+         if ( $_SERVER['LOCAL_ADDR'] == '176.67.165.196' ) {
+              // test system
+              $shipping_category_standard = 3;
+              $shipping_category_free = 4;
+              $shipping_category_bottle = 5;
+              $shipping_category_case = 6;
+            }
+
+         if ( isset($product_wrapper->field_delivery_charge) && $product_wrapper->field_delivery_charge->value() != NULL ) {
+              $shipping_category_tid = $product_wrapper->field_delivery_charge->tid->value();
+              $shipping_category_name = $product_wrapper->field_delivery_charge->name->value();
+            } else {
+              $shipping_category_tid = $shipping_category_standard;
+              $shipping_category_name = 'undefined';
+            }
+
+       if ( viva_shipping_get_debug() && $debug ) {
+            drupal_set_message("DEBUG: $line_item_product_title shipping category $shipping_category_name (tid=$shipping_category_tid) value $line_item_value");
+          }
+
+       switch ( $shipping_category_tid ) {
+         case $shipping_category_free:
+           $shipping_data['free'] += $line_item_value;
+           break;
+         case $shipping_category_bottle:
+           $shipping_data['bottles'] += $line_item_qty;
+           break;
+         case $shipping_category_case:
+           $shipping_data['cases'] += $line_item_qty;
+           break;
+         default:
+           $shipping_data['standard'] += $line_item_value;
+       }
+
+    }
+
+  }
+
+  return $shipping_data;
+
+}
+

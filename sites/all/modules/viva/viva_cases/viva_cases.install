@@ -1,0 +1,10 @@
+<?php
+
+/**
+ * Implements hook_uninstall().
+ */
+function viva_cases_uninstall() {
+  variable_del('viva_cases_case_size');
+  variable_del('viva_cases_enforce_case_size');
+  variable_del('viva_cases_debug');
+}

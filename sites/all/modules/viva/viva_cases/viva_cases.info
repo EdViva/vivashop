@@ -1,0 +1,7 @@
+name = Viva Case Sizes
+description = Ensure drinks are ordered in case sizes
+package = Viva
+dependencies[] = commerce
+dependencies[] = commerce_cart
+core = 7.x
+version = 7.x-1.0
