@@ -252,3 +252,12 @@ div.messages.commerce-add-to-cart-confirmation .message-inner .view-confirm-mess
 #block-views-exp-display-products-page {
 margin-top: 50px;
 }
+
+/*product item */
+
+.product-item {
+    height: 350px;
+}
+
+
+

@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Viva product display feature.
+ */
+
+include_once 'viva_product_display.features.inc';

@@ -51,6 +51,17 @@
 /**
 * Add to cart popin.
 */
+
+.view-collection-products .commerce-product-field-field-images {
+    border: 1px solid #fbcaa7;
+    height: 220px;
+    width: auto;
+}
+
+.product-item {
+    height: 360px;
+}
+
 div.messages.commerce-add-to-cart-confirmation .message-inner .added-product-title {
   float: left;
   /* LTR */

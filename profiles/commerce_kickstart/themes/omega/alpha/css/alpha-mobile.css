@@ -18,3 +18,8 @@
   margin-left: -10px;
   margin-right: -10px;
 }
+
+.product-item {
+    width: 250px;
+    margin: 0 auto;
+}

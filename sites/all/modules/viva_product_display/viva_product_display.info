@@ -1,0 +1,11 @@
+name = Viva product display
+description = Responsive grid functionality for product display
+core = 7.x
+package = Features
+version = 7.x-1.0
+project = viva_product_display
+dependencies[] = commerce_kickstart_taxonomy
+dependencies[] = ctools
+dependencies[] = views
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:1
