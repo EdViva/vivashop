@@ -1,0 +1,13 @@
+diff --git a/commerce_message.module b/commerce_message.module
+index 892bbb5..e1b49eb 100644
+--- a/commerce_message.module
++++ b/commerce_message.module
+@@ -57,7 +57,7 @@ function commerce_message_module_implements_alter(&$implementations, $hook) {
+  * @link http://drupal.org/node/1272560
+  */
+ function commerce_message_message_presave($message) {
+-  if (!empty($message->mid) || $message->type != 'commerce_order_order_confirmation') {
++  if (!empty($message->mid) || strpos($message->type, '_order_confirmation') === FALSE) {
+     return;
+   }
+ 
