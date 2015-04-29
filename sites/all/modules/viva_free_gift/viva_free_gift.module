@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Viva Free Gift feature.
+ */
+
+include_once 'viva_free_gift.features.inc';
