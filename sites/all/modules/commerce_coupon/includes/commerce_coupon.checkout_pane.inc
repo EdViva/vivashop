@@ -21,8 +21,8 @@ function commerce_coupon_pane_checkout_form($form, &$form_state, $checkout_pane,
   // Store the payment methods in the form for validation purposes.
   $pane_form['coupon_code'] = array(
     '#type' => 'textfield',
-    '#title' => t('Coupon Code'),
-    '#description' => t('Enter here your coupon code.'),
+    '#title' => t('Free gift code'),
+    '#description' => t('Enter your gift code here.'),
   );
 
   if (variable_get('commerce_coupon_checkout_enable_add_button', TRUE)) {
