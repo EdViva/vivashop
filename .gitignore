@@ -10,3 +10,4 @@ sites/*/private
 profiles/.DS_Store
 profiles/._.DS_Store
 shop.komodoproject
+sites/all/database/database.sql
