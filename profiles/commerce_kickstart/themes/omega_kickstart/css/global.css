@@ -3264,6 +3264,11 @@ display: block;
 margin-bottom: 15px;
 }
 
+.form-item-checkout-donate-commerce-donate-amount-und-select .form-type-radio {
+    width: 19%;
+    float: left;
+}
+
 .commerce-paypal-icons .label {
     font-weight: bold;
     margin-right: 5px;
