@@ -3256,11 +3256,27 @@ display: block;
 
 
 .form-item-checkout-donate-commerce-donate-amount-und-select .form-checkboxes .form-item, .form-radios .form-item {
-    float: left;
+/*    float: left;
     margin-bottom: 0.4em;
-    margin-top: 0.4em;
-    width: 19%;
+//    margin-top: 0.4em;
+//    width: 19%;
+*/
+margin-bottom: 15px;
 }
+
+.commerce-paypal-icons .label {
+    font-weight: bold;
+    margin-right: 5px;
+    padding-left: 19px;
+    display: none;
+}
+.commerce-paypal-icon {
+    display: none;
+    margin-right: 4px;
+    position: relative;
+    top: 6px;
+}
+
 
 #edit-checkout-donate-commerce-donate-amount label {
     margin-right: 10px;
