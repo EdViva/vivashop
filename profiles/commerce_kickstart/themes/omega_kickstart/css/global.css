@@ -999,8 +999,8 @@ select {
 * Menu footer navigation
 */
 .block-menu-menu-footer-navigation {
-float: right;
-    width: 500px;
+    float: right;
+    width: 54%;
 	}
 
 .section-footer ul.menu,
